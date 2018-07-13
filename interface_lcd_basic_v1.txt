@@ -1,0 +1,145 @@
+//Program info
+/****************************
+ * File:   lcd_main.c
+ * Author: Fredrik Johansson
+ * MCU: PIC16F690
+ * Created on July 12, 2018
+ * IDE: MPLAB X IDE v4.00
+ */
+
+//Description
+/* How to interface an HD44780 based LCD
+ * This program is a simple example on of how to interface an HD44780 based LCD
+ * in its most basic mode using 8 data pins which means using 11 pins on
+ * the MCU (8 data pins, 3 control pins).
+ */ 
+
+//connect the LCD in 8 bit mode to the MCU
+/*Connection
+ *  LCD      PIC16F690       PowerSupply
+ * 1  Vss --------------->   Directly to GND
+ * 2  Vdd --------------->   Directly to Positive
+ * 3  Vo  --------------->   Connect to potentiometer for adjusting the contrast
+ * 4  RS ----> RB4
+ * 5  R/W ---> RB5
+ * 6  E   ---> RB6
+ * 7  DB0 ---> RC0
+ * 8  DB1 ---> RC1
+ * 9  DB2 ---> RC2
+ * 10 DB3 ---> RC3
+ * 11 DB4 ---> RC4
+ * 12 DB5 ---> RC5
+ * 13 DB6 ---> RC6
+ * 14 DB7 ---> RC7 (used as busy flag)
+ * 15 A  ---------------->   Directly to positive (have a resistor or pot. in between) 
+ * 16 K  ---------------->   Directly to GND
+ */
+
+//include libraries
+#include <xc.h>
+#include <pic16f690.h>
+#include <stdio.h>
+
+// Configuration of the MCU
+#pragma config FOSC = INTRCCLK  // Oscillator Selection bits (INTOSCIO oscillator: I/O function on RA4/OSC2/CLKOUT pin, I/O function on RA5/OSC1/CLKIN)
+#pragma config WDTE = OFF       // Watchdog Timer Enable bit (WDT disabled and can be enabled by SWDTEN bit of the WDTCON register)
+#pragma config PWRTE = OFF      // Power-up Timer Enable bit (PWRT disabled)
+#pragma config MCLRE = OFF      // MCLR Pin Function Select bit (MCLR pin function is digital input, MCLR internally tied to VDD)
+#pragma config CP = OFF         // Code Protection bit (Program memory code protection is disabled)
+#pragma config CPD = OFF        // Data Code Protection bit (Data memory code protection is disabled)
+#pragma config BOREN = OFF      // Brown-out Reset Selection bits (BOR disabled)
+#pragma config IESO = ON        // Internal External Switchover bit (Internal External Switchover mode is enabled)
+#pragma config FCMEN = ON       // Fail-Safe Clock Monitor Enabled bit (Fail-Safe Clock Monitor is enabled)
+
+#define _XTAL_FREQ              8000000
+#define dataBus                 PORTC  //PORTC pins will serve as the databus 
+#define dataBusDirection        TRISC
+
+//Define the control pins
+/* RS (Register Select) determines if the data transfer between the display and 
+ * the mcu are characters or a command/status. When the the mcu needs to send a command
+ * to the display or to read the status, it must be pulled low. If character is to
+ * be sent it needs to be high. (Refer to the datasheet for further display commands instructions)
+ * 
+ * The R/W pin determines in which way the data shall go. If low the command or
+ * characters are beeing written to the display. When high the character data or command
+ * from the display are being read.
+ * 
+ * The Enable pin initiates the actual data transfer. When writing to the display the 
+ * data is transferred only on the high to low transition of the pin. 
+ * 
+*/
+
+#define registerSelectPin       PORTBbits.RB4   //RS (Register Select)
+#define readWritePin            PORTBbits.RB5   //R/W (Read/Write)
+#define enablePin               PORTBbits.RB6   //Enable
+
+//Methods
+void Enable(void);                          
+void Send_A_Command(unsigned char command); 
+void Send_A_Character(unsigned char character);
+void Check_if_Busy(void);
+
+void main(void) {
+    //Set up the MCU
+    dataBus = 0;               //Remove all data on the databus
+    TRISBbits.TRISB4 = 0;      //Set up the Register Select pin as an output
+    TRISBbits.TRISB5 = 0;      //Set up the Read/Write pin as an output
+    TRISBbits.TRISB6 = 0;      //Set up the Enable pin as an output
+    ANSEL = 0;                 //Analog Select register must be initialised otherwise the pins will read 0 
+    ANSELH = 0;                //Analog Select register must be initialised otherwise the pins will read 0                  
+    
+    //Set up the display
+    Send_A_Command(0b00000001);   //Clear Display
+    Send_A_Command(0x38);         //Function Set: 8-bit mode, 2 numer of lines, 5x11 font size (refer to datasheet)
+    Send_A_Command(0b00001111);   //Display On/Off: entire display on, cursor on, cursor position on (refer to datasheet)
+    
+    //Send data to the display      
+    Send_A_Character(0x41);       //A
+    Send_A_Character(0x57);       //W
+    Send_A_Character(0x45);       //E
+    Send_A_Character(0x53);       //S
+    Send_A_Character(0x4F);       //O
+    Send_A_Character(0x4D);       //M
+    Send_A_Character(0x45);       //E
+    Send_A_Character(0x21);       //!
+       
+    while(1);                     //Infinite loop (stay here)
+    
+}
+
+void Enable(){
+    enablePin = 1;              //Set enable pin on
+    __delay_ms(50);             //Give the display some time
+    enablePin = 0;              //Set enable pin off
+}
+void Send_A_Command(unsigned char command){
+    
+    Check_if_Busy();            //Check that the display is not busy
+    dataBus = command;          //Put the command into the 8-bit databus
+    readWritePin = 0;           //Set the display in Write-to mode
+    registerSelectPin = 0;      //Set the display in Command mode
+    Enable();                   //Update the display
+    dataBus = 0;                //Clear the data on the databus
+}       
+void Send_A_Character(unsigned char character){
+    
+    Check_if_Busy();            //Check that the display is not busy
+    dataBus = character;        //Put the character into the databus
+    readWritePin = 0;           //Set the display in write-to mode
+    registerSelectPin = 1;      //Set the display in Data mode 
+    Enable();                   //Update the display
+    dataBus = 0;                //Clear the data on the databus
+    
+}
+void Check_if_Busy(void){
+    dataBusDirection = 1;       //Set the databus as input to be able to read from it
+    readWritePin = 1;           //Set the display in Read from mode
+    registerSelectPin = 0;      //Set the display in Command mode
+ 
+    while(dataBus >= 0x80){     //DB7 on the display is used as busy flag, while the databus is >0b10000000
+                                //i.e. the flag is set means it's busy
+     Enable();                  //Update the display
+    }
+    dataBusDirection = 0x00;    //when the busy flag is 0, set the databus as output again
+}
