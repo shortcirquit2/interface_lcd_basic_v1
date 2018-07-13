@@ -82,7 +82,6 @@ void Check_if_Busy(void);
 
 void main(void) {
     //Set up the MCU
-    dataBus = 0;               //Remove all data on the databus
     TRISBbits.TRISB4 = 0;      //Set up the Register Select pin as an output
     TRISBbits.TRISB5 = 0;      //Set up the Read/Write pin as an output
     TRISBbits.TRISB6 = 0;      //Set up the Enable pin as an output
