@@ -89,6 +89,7 @@ void main(void) {
     ANSELH = 0;                //Analog Select register must be initialised otherwise the pins will read 0                  
     
     //Set up the display
+    databus = 0;                  //Clear the databus
     Send_A_Command(0b00000001);   //Clear Display
     Send_A_Command(0x38);         //Function Set: 8-bit mode, 2 numer of lines, 5x11 font size (refer to datasheet)
     Send_A_Command(0b00001111);   //Display On/Off: entire display on, cursor on, cursor position on (refer to datasheet)
