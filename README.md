@@ -1,7 +1,6 @@
 # interface_lcd_basic_v1
 How to interface an HD44780 LCD with PIC16F690 in 8-bit mode.
 
-Define the control pins
 RS (Register Select) determines if the data transfer between the display and 
 the mcu are characters or a command/status. When the the mcu needs to send a command
 to the display or to read the status, it must be pulled low. If character is to
