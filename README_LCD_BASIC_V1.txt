@@ -25,3 +25,4 @@ Pin 7 - 10 DB0-DB03   Four low order bi-directional three-state data bus line (n
 Pin 11 - 14 DB04-DB07 Four high order bi-directional three-state data bus line (DB07 can be used as busy flag)
 Pin 15 A              Power supply for LED backlight (+)
 Pin 16 K              Power supply for LED backlight (-)
+#
